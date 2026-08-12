@@ -1,0 +1,90 @@
+name: ESP32 Dual PTC Bench V2 Buzzer Final2
+
+on:
+  push:
+    branches:
+      - ci/esp32-toolchain-20260801
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.5.1"
+      - name: Prepare sketch
+        run: |
+          mkdir -p final/SKETCH
+          cp ci/SKETCH.ino final/SKETCH/SKETCH.ino
+          sha256sum final/SKETCH/SKETCH.ino
+      - name: Install core and libraries
+        run: |
+          set -euxo pipefail
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.8
+          arduino-cli lib update-index
+          arduino-cli lib install "Adafruit GFX Library" "Adafruit SSD1306" "OneWire" "DallasTemperature"
+      - name: Compile
+        run: |
+          set -euxo pipefail
+          mkdir -p build
+          FQBN='esp32:esp32:esp32:CPUFreq=240,FlashFreq=40,FlashMode=dio,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,DebugLevel=none,EraseFlash=none'
+          arduino-cli compile --clean --export-binaries --output-dir build --fqbn "$FQBN" final/SKETCH 2>&1 | tee build/compile.log
+      - name: Validate binaries
+        run: |
+          set -euxo pipefail
+          mkdir -p export
+          cp build/SKETCH.ino.bin export/
+          cp build/SKETCH.ino.bootloader.bin export/
+          cp build/SKETCH.ino.partitions.bin export/
+          APP0=$(find "$HOME/.arduino15/packages/esp32/hardware/esp32/3.3.8" -name boot_app0.bin | head -n 1)
+          cp "$APP0" export/boot_app0.bin
+          cp final/SKETCH/SKETCH.ino export/SOURCE.ino
+          cp build/compile.log export/compile.log
+          cat > export/flash_args <<'EOF'
+          --flash-mode dio --flash-freq 40m --flash-size 4MB
+          0x1000 SKETCH.ino.bootloader.bin
+          0x8000 SKETCH.ino.partitions.bin
+          0xe000 boot_app0.bin
+          0x10000 SKETCH.ino.bin
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct,hashlib,json
+          d=Path('export'); app=d/'SKETCH.ino.bin'; boot=d/'SKETCH.ino.bootloader.bin'; part=d/'SKETCH.ino.partitions.bin'; app0=d/'boot_app0.bin'
+          assert app.read_bytes()[0]==0xE9 and boot.read_bytes()[0]==0xE9
+          h=boot.read_bytes()[:4]; assert h[2]==0x02 and h[3]==0x20
+          pdata=part.read_bytes(); entries=[]
+          for i in range(0,len(pdata),32):
+              e=pdata[i:i+32]
+              if len(e)<32: break
+              magic=struct.unpack_from('<H',e,0)[0]
+              if magic==0xFFFF: break
+              if magic!=0x50AA: break
+              typ=e[2]; sub=e[3]; off,size=struct.unpack_from('<II',e,4); label=e[12:28].split(b'\0',1)[0].decode('ascii','replace'); entries.append((label,typ,sub,off,size))
+          apppart=next(x for x in entries if x[1]==0 and x[3]<=0x10000<x[3]+x[4]); assert 0x10000+app.stat().st_size<=apppart[3]+apppart[4]
+          layout=[(0x1000,boot),(0x8000,part),(0xE000,app0),(0x10000,app)]
+          full=bytearray(b'\xFF'*(4*1024*1024))
+          for off,p in layout: b=p.read_bytes(); full[off:off+len(b)]=b
+          (d/'SKETCH.ino.merged.bin').write_bytes(full)
+          end=max(off+p.stat().st_size for off,p in layout); compact=bytearray(b'\xFF'*end)
+          for off,p in layout: b=p.read_bytes(); compact[off:off+len(b)]=b
+          (d/'FW.bin').write_bytes(compact)
+          def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          r={'source_sha256':sha(d/'SOURCE.ino'),'application_sha256':sha(app),'bootloader_sha256':sha(boot),'partitions_sha256':sha(part),'boot_app0_sha256':sha(app0),'full_merged_sha256':sha(d/'SKETCH.ino.merged.bin'),'compact_fw_sha256':sha(d/'FW.bin'),'compact_fw_size':(d/'FW.bin').stat().st_size,'app_partition':{'label':apppart[0],'offset':hex(apppart[3]),'size':hex(apppart[4])}}
+          (d/'BINARY_VALIDATION.json').write_text(json.dumps(r,indent=2)); print(json.dumps(r,indent=2))
+          PY
+          { arduino-cli version; arduino-cli core list; arduino-cli lib list; } > export/BUILD_RECEIPT.txt
+          sha256sum export/* > export/SHA256_ALL.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dual-ptc-buzzer-final2
+          path: export/
+          if-no-files-found: error
+          retention-days: 1
