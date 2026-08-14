@@ -1,0 +1,134 @@
+name: ESP32 PTC G33 Continuous MOSFET Test Build
+
+on:
+  push:
+    branches:
+      - ci/esp32-toolchain-20260801
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.5.1"
+
+      - name: Decode audited source
+        env:
+          SOURCE_GZ_B64: "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"
+        run: |
+          mkdir -p ci_g33/SKETCH
+          printf '%s' "$SOURCE_GZ_B64" | base64 -d | gzip -d > ci_g33/SKETCH/SKETCH.ino
+          echo "5e6c8ba0dd761fa4fb42c00ed84d915d324bb3f89dddac80ca36f27d79016ea5  ci_g33/SKETCH/SKETCH.ino" | sha256sum -c -
+
+      - name: Install ESP32 core and libraries
+        run: |
+          set -euxo pipefail
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.8
+          arduino-cli lib update-index
+          arduino-cli lib install "Adafruit GFX Library" "Adafruit SSD1306" "OneWire" "DallasTemperature"
+
+      - name: Compile real ESP32 firmware
+        run: |
+          set -euxo pipefail
+          mkdir -p build
+          FQBN='esp32:esp32:esp32:CPUFreq=240,FlashFreq=40,FlashMode=dio,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,DebugLevel=none,EraseFlash=none'
+          arduino-cli compile --clean --export-binaries --output-dir build --fqbn "$FQBN" ci_g33/SKETCH 2>&1 | tee build/compile.log
+          find build -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
+      - name: Validate and prepare export set
+        run: |
+          set -euxo pipefail
+          mkdir -p export
+          cp build/SKETCH.ino.bin export/
+          cp build/SKETCH.ino.bootloader.bin export/
+          cp build/SKETCH.ino.partitions.bin export/
+          APP0=$(find "$HOME/.arduino15/packages/esp32/hardware/esp32/3.3.8" -name boot_app0.bin | head -n 1)
+          test -n "$APP0"
+          cp "$APP0" export/boot_app0.bin
+          cp ci_g33/SKETCH/SKETCH.ino export/SOURCE.ino
+          cp build/compile.log export/compile.log
+          cat > export/flash_args <<'EOF'
+          --flash-mode dio --flash-freq 40m --flash-size 4MB
+          0x1000 SKETCH.ino.bootloader.bin
+          0x8000 SKETCH.ino.partitions.bin
+          0xe000 boot_app0.bin
+          0x10000 SKETCH.ino.bin
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct, hashlib, json
+          d=Path('export')
+          app=d/'SKETCH.ino.bin'; boot=d/'SKETCH.ino.bootloader.bin'; part=d/'SKETCH.ino.partitions.bin'; app0=d/'boot_app0.bin'
+          assert boot.read_bytes()[0] == 0xE9
+          assert app.read_bytes()[0] == 0xE9
+          h=boot.read_bytes()[:4]
+          assert h[2] == 0x02
+          assert h[3] == 0x20
+          pdata=part.read_bytes(); entries=[]
+          for i in range(0,len(pdata),32):
+              e=pdata[i:i+32]
+              if len(e)<32: break
+              magic=struct.unpack_from('<H',e,0)[0]
+              if magic==0xFFFF: break
+              if magic!=0x50AA: break
+              typ=e[2]; sub=e[3]; off,size=struct.unpack_from('<II',e,4)
+              label=e[12:28].split(b'\0',1)[0].decode('ascii','replace')
+              entries.append((label,typ,sub,off,size))
+          apppart=next(x for x in entries if x[1]==0 and x[3] <= 0x10000 < x[3]+x[4])
+          assert 0x10000 + app.stat().st_size <= apppart[3]+apppart[4]
+          layout=[(0x1000,boot),(0x8000,part),(0xE000,app0),(0x10000,app)]
+          full=bytearray(b'\xFF'*(4*1024*1024))
+          for off,p in layout:
+              b=p.read_bytes(); full[off:off+len(b)]=b
+          (d/'SKETCH.ino.merged.bin').write_bytes(full)
+          end=max(off+p.stat().st_size for off,p in layout)
+          compact=bytearray(b'\xFF'*end)
+          for off,p in layout:
+              b=p.read_bytes(); compact[off:off+len(b)]=b
+          (d/'FW.bin').write_bytes(compact)
+          def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          receipt={
+            'source_sha256': sha(d/'SOURCE.ino'),
+            'application_sha256': sha(app),
+            'bootloader_sha256': sha(boot),
+            'partitions_sha256': sha(part),
+            'boot_app0_sha256': sha(app0),
+            'full_merged_sha256': sha(d/'SKETCH.ino.merged.bin'),
+            'compact_fw_sha256': sha(d/'FW.bin'),
+            'compact_fw_size': (d/'FW.bin').stat().st_size,
+            'app_partition': {'label':apppart[0],'offset':hex(apppart[3]),'size':hex(apppart[4])},
+            'settings': {'board':'ESP32 Dev Module','core':'3.3.8','cpu':'240MHz','flash_mode':'DIO','flash_freq':'40MHz','flash_size':'4MB','partition':'default','psram':'disabled','debug':'none'}
+          }
+          (d/'BINARY_VALIDATION.json').write_text(json.dumps(receipt,indent=2))
+          print(json.dumps(receipt,indent=2))
+          PY
+          {
+            echo 'ARDUINO CLI:'
+            arduino-cli version
+            echo
+            echo 'CORES:'
+            arduino-cli core list
+            echo
+            echo 'LIBRARIES:'
+            arduino-cli lib list
+          } > export/BUILD_RECEIPT.txt
+          sha256sum export/* > export/SHA256_ALL.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ptc-g33-continuous-build
+          path: export/
+          if-no-files-found: error
+          retention-days: 1
